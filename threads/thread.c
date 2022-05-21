@@ -27,6 +27,7 @@
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -109,6 +110,7 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
+	list_init (&sleep_list);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -136,7 +138,7 @@ thread_start (void) {
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void
-thread_tick (void) {
+thread_tick () {
 	struct thread *t = thread_current ();
 
 	/* Update statistics. */
@@ -145,10 +147,10 @@ thread_tick (void) {
 #ifdef USERPROG
 	else if (t->pml4 != NULL)
 		user_ticks++;
+
 #endif
 	else
 		kernel_ticks++;
-
 	/* Enforce preemption. */
 	if (++thread_ticks >= TIME_SLICE)
 		intr_yield_on_return ();
@@ -243,6 +245,11 @@ thread_unblock (struct thread *t) {
 	list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
+}
+
+void
+thread_sleep (int64_t ticks) {
+	printf("ticks : %d\n", ticks);
 }
 
 /* Returns the name of the running thread. */
@@ -538,6 +545,8 @@ do_schedule(int status) {
 	schedule ();
 }
 
+/* block()에서 현재쓰레드가 상태가 blocked로 변경된 상태로 들어온다.(curr->blocked 상태 변경 안해도 된다) */
+/* next.status-> running 이라고 하고 */
 static void
 schedule (void) {
 	struct thread *curr = running_thread ();
@@ -556,7 +565,6 @@ schedule (void) {
 	/* Activate the new address space. */
 	process_activate (next);
 #endif
-
 	if (curr != next) {
 		/* If the thread we switched from is dying, destroy its struct
 		   thread. This must happen late so that thread_exit() doesn't

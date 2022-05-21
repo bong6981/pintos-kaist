@@ -88,13 +88,17 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+/* while 문 안에서 yield(); 되므로 start 에 값을 가지고 있는 상태에서 다음 자신의 turn에 호출 된다 */
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+    thread_sleep(ticks);
+
+
+	// while (timer_elapsed (start) < ticks)
+		// thread_yield ();
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -122,6 +126,7 @@ timer_print_stats (void) {
 }
 
 /* Timer interrupt handler. */
+/* 1tick이 증가할 떄마다 timer_interrupt 걸린다 */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
