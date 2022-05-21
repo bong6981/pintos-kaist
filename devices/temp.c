@@ -88,11 +88,18 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+/* while 문 안에서 yield(); 되므로 start 에 값을 가지고 있는 상태에서 다음 자신의 turn에 호출 된다 */
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
-	ASSERT (intr_get_level () == INTR_ON);
+	// ASSERT (intr_get_level () == INTR_ON);
+	// printf("in_timer_sleep %lld\n", ticks);
+	// printf("in_timer_sleep %lld\n", start);
+
+    // thread_sleep(ticks + start);
+
+
 	while (timer_elapsed (start) < ticks)
 		thread_yield ();
 }
@@ -122,10 +129,13 @@ timer_print_stats (void) {
 }
 
 /* Timer interrupt handler. */
+/* 1tick이 증가할 떄마다 timer_interrupt 걸린다 */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	/* 지금 tick에 sleep que에서 깨어날 thread 있는지 확인해서 깨우기 */
+	thread_awake (ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

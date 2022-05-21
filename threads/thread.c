@@ -253,31 +253,76 @@ thread_unblock (struct thread *t) {
 void
 thread_sleep (int64_t ticks) {
 
-  struct thread *curr = thread_current ();
-  printf("in thread_sleep_ticks : %lld\n", ticks);
+//   struct thread *curr = thread_current ();
+// //   printf("in thread_sleep_ticks : %lld\n", ticks);
 
-  enum intr_level old_level;
-  ASSERT (!intr_context ());
-  old_level = intr_disable ();
+//   enum intr_level old_level;
+// //   ASSERT (!intr_context ());
+// //   old_level = intr_disable ();
 
-  if (curr != idle_thread){
-    curr->wakeup_tick = ticks;
-	update_next_tick_to_awake(ticks);
-	printf("%lld ticks \n", curr->wakeup_tick); /*intr_disalbe() 주석 처리하고 동작*/
+//   if (curr != idle_thread){
+//     curr->wakeup_tick = ticks;
+// 	list_push_back(&sleep_list, &curr->elem);
+// 	update_next_tick_to_awake(ticks);
+// 	// printf("%lld ticks \n", curr->wakeup_tick); /*intr_disalbe() 주석 처리하고 동작*/
 
-	list_push_back(&sleep_list, &curr->elem);
-   	/*sleep_list에 들어간 것 확인*/
-		// struct thread *p;
-		// p = list_entry(list_front(&sleep_list), struct thread, elem);
-		// printf("polled %lld ticks \n", p->wakeup_tick);
-  }
-  intr_set_level (old_level);
-  do_schedule (THREAD_BLOCKED);
+//    	/*sleep_list에 들어간 것 확인*/
+// 		// struct thread *p;
+// 		// p = list_entry(list_front(&sleep_list), struct thread, elem);
+// 		// printf("polled %lld ticks \n", p->wakeup_tick);
+//   }
+// //   do_schedule (THREAD_BLOCKED);
+// //   intr_set_level (old_level);
 }
 
-void
+void thread_awake (int64_t ticks) {
+	static struct list tmp_list;
+	list_init(&tmp_list);
+	struct thread *thread_to_check;
+	int64_t cand_next_tick_to_awake = -1;
+	
+	while (!list_empty(&sleep_list)) {
+		// printf("polled %ld size!! \n", list_size(&sleep_list));
+		thread_to_check = list_entry(list_pop_front(&sleep_list), struct thread, elem);
+		printf("polled %lld ticks \n", thread_to_check->wakeup_tick);
+		printf("input %lld ticks \n", ticks);
+		
+		if(thread_to_check->wakeup_tick <= ticks) {
+			// // enum intr_level old_level;
+
+			// // old_level = intr_disable ();
+			thread_to_check->status == THREAD_READY;
+			list_push_back (&ready_list, &thread_to_check->elem);
+
+		} else {
+			if(cand_next_tick_to_awake == -1) {
+				cand_next_tick_to_awake = thread_to_check->wakeup_tick;
+			} else {
+				if(thread_to_check->wakeup_tick < cand_next_tick_to_awake) {
+					cand_next_tick_to_awake = thread_to_check->wakeup_tick;
+				}
+			}
+			list_push_back(&tmp_list, &thread_to_check->elem);
+		}
+		printf("polled %lld ticks \n", thread_to_check->wakeup_tick);
+		printf("after %ld size!! \n", list_size(&sleep_list));
+	}
+	next_tick_to_awake = cand_next_tick_to_awake;
+	ready_list = tmp_list;
+}
+
+
+
+void /*만약에 sleep에서 block 빼잖아, 그거 다 빼면 그 값 업데이트 */
 update_next_tick_to_awake (int64_t ticks) {
-	printf("to_update_ticks : %lld\n", ticks);
+	// printf("to_update_ticks : %lld\n", ticks);
+	// printf("origin_ticks : %lld\n", next_tick_to_awake);
+	if(next_tick_to_awake == 0) {
+		next_tick_to_awake = ticks;
+	}
+	if(ticks < next_tick_to_awake) {
+		next_tick_to_awake = ticks;
+	}
 }
 
 /* Returns the name of the running thread. */
