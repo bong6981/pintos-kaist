@@ -50,6 +50,9 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+/* awake */
+static int64_t next_tick_to_awake; /* 다음에 깨울 tick 중 가장 작은 값 */
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -249,7 +252,32 @@ thread_unblock (struct thread *t) {
 
 void
 thread_sleep (int64_t ticks) {
-	printf("ticks : %d\n", ticks);
+
+  struct thread *curr = thread_current ();
+  printf("in thread_sleep_ticks : %lld\n", ticks);
+
+  enum intr_level old_level;
+  ASSERT (!intr_context ());
+  old_level = intr_disable ();
+
+  if (curr != idle_thread){
+    curr->wakeup_tick = ticks;
+	update_next_tick_to_awake(ticks);
+	printf("%lld ticks \n", curr->wakeup_tick); /*intr_disalbe() 주석 처리하고 동작*/
+
+	list_push_back(&sleep_list, &curr->elem);
+   	/*sleep_list에 들어간 것 확인*/
+		// struct thread *p;
+		// p = list_entry(list_front(&sleep_list), struct thread, elem);
+		// printf("polled %lld ticks \n", p->wakeup_tick);
+  }
+  intr_set_level (old_level);
+  do_schedule (THREAD_BLOCKED);
+}
+
+void
+update_next_tick_to_awake (int64_t ticks) {
+	printf("to_update_ticks : %lld\n", ticks);
 }
 
 /* Returns the name of the running thread. */
