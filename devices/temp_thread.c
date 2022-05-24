@@ -272,6 +272,7 @@ thread_sleep (int64_t ticks) {
 		// p = list_entry(list_front(&sleep_list), struct thread, elem);
 		// printf("polled %lld ticks \n", p->wakeup_tick);
   }
+  update_next_tick_to_awake(ticks);
   do_schedule (THREAD_BLOCKED);
   intr_set_level (old_level);
 }
@@ -362,10 +363,11 @@ update_next_tick_to_awake (int64_t ticks) {
 	// if(next_tick_to_awake == 0) {
 	// 	next_tick_to_awake = ticks;
 	// }
-	if(ticks < next_tick_to_awake) {
-		next_tick_to_awake = ticks;
-	}
+	// if(ticks < next_tick_to_awake) {
+	// 	next_tick_to_awake = ticks;
+	// }
 
+	next_tick_to_awake = MIN(next_tick_to_awake, ticks);
 }
 
 /* Returns the name of the running thread. */
