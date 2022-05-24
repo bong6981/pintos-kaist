@@ -313,13 +313,14 @@ void cond_wait(struct condition *cond, struct lock *lock)
 	sema_init(&waiter.semaphore, 0);
 	/* condition variable의 waiters list에 우선순위 순서로
 	삽입되도록 수정 */
-	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, NULL);
+	list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sem_priority, NULL); // 여기 사실은 push_back 으로 해도 된다. 애초에 맨 처음에는 빈 semaphore를 넣어주기 때문에
 	// list_push_back(&cond->waiters, &waiter.elem);
-	lock_release(lock);
-	sema_down(&waiter.semaphore);
-	lock_acquire(lock);
+	lock_release(lock); // cond에 대한 lock을 푸는 것. signal을 받기 위해서. Atomically releases LOCK and waits for COND to be signaled by  some other piece of code. 
+	sema_down(&waiter.semaphore); // put thread to sleep unitil condition is signaled, down하고 싶어도 0으로 초기화 되어있으니까. 
+	lock_acquire(lock); //  After COND is signaled, LOCK is reacquired before returning. 
 }
 
+/* signal(condition, lock): if any threads are waiting on condition, wake up one of them. Caller must hold lock, which must be the same as the lock used in the wait call.*/
 /* If any threads are waiting on COND (protected by LOCK), then
 	 this function signals one of them to wake up from its wait.
 	 LOCK must be held before calling this function.
@@ -336,10 +337,11 @@ void cond_signal(struct condition *cond, struct lock *lock UNUSED)
 
 	if (!list_empty(&cond->waiters))
 	{
-		/* condition variable의 waiters list를 우선순위로 재 정열 */
-		list_sort(&cond->waiters, cmp_sem_priority, NULL);
+		/* condition variable의 waiters list를 우선순위로 재정렬 */
+		list_sort(&cond->waiters, cmp_sem_priority, NULL); /*왜냐면 처음에 sema_elem 넣을 때 빈 waitlist 가진 semaphore을 넣기 때문에
+															 cond_wait()의 sema_init */
 		sema_up(&list_entry(list_pop_front(&cond->waiters),
-												struct semaphore_elem, elem)
+												struct semaphore_elem, elem) /*sema_up: 자원 반납 */
 								 ->semaphore);
 	}
 }
